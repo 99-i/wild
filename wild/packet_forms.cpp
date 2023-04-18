@@ -9,7 +9,7 @@ w_packet_form forms[FORMS_SIZE] = {
 		4,
 		{
 			{"protocol_version", w_data_type::VARINT},
-			{"server_address_(hostname_or_ip)", w_data_type::STRING},
+			{"server_address", w_data_type::STRING},
 			{"server_port", w_data_type::UNSIGNED_SHORT},
 			{"next_state", w_data_type::VARINT}
 		}

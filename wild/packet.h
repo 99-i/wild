@@ -45,7 +45,7 @@ extern w_packet_form forms[FORMS_SIZE];
 
 struct w_packet
 {
-	typedef std::variant<bool, int8_t, int16_t, int32_t, int64_t, float, double, std::string> packet_field_t;
+	typedef std::variant<bool, uint8_t, int8_t, uint16_t, int16_t, int32_t, int64_t, float, double, std::string> packet_field_t;
 	std::string_view name;
 	const w_packet_form *form;
 	std::map<std::string, packet_field_t> data;
@@ -115,12 +115,19 @@ private:
 
 	w_client *client;
 
-	void handle_data(uint8_t byte);
+	//return true if data was handled correctly.
+	//return false if malformed data from client.
+	bool handle_data(uint8_t byte);
 	void reset();
 
-	void read_packet();
+	//return true if data was handled correctly.
+	//return false if malformed data from client.
+	bool read_packet();
 
 public:
-	void handle_data(const std::vector<uint8_t> &data);
+
+	//return true if data was handled correctly.
+	//return false if malformed data from client.
+	bool handle_data(const std::vector<uint8_t> &data);
 	w_packet_read_stream(w_client *client);
 };

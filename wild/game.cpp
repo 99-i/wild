@@ -1,22 +1,28 @@
+#include <chrono>
 #include "game.h"
 #include "server.h"
 
 constexpr int TICK_RATE = 20;
 
-static void tick_timer_cb(uv_timer_t *timer)
-{
-	w_game *game = reinterpret_cast<w_game *>((char *)timer - offsetof(w_game, tick_timer));
-	game->tick();
-}
-
-w_game::w_game(w_server *server) : server(server)
+w_game::w_game(w_server *server) : server(server), tick_timer(server->context)
 {
 }
 
 void w_game::start()
 {
-	uv_timer_init(&this->server->loop, &this->tick_timer);
-	uv_timer_start(&this->tick_timer, tick_timer_cb, 0, 1000 / TICK_RATE);
+	this->lua_vm.start();
+	while (true)
+	{
+		auto begin = std::chrono::high_resolution_clock::now();
+		this->tick();
+		auto end = std::chrono::high_resolution_clock::now();
+		auto time_tick_took = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+		auto time_left = std::chrono::milliseconds(1000 / TICK_RATE) - time_tick_took;
+
+		this->tick_timer.expires_after(time_left);
+
+		this->tick_timer.wait();
+	}
 }
 void w_game::tick()
 {

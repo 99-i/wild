@@ -7,10 +7,10 @@ namespace write_fn
 	std::vector<uint8_t> write_varint(int32_t varint);
 }
 
-struct lua_clientbound_packet
+struct w_clientbound_packet
 {
 	std::vector <uint8_t> data;
-	lua_clientbound_packet(int id);
+	w_clientbound_packet(int id);
 	int id;
 	void write_bool(bool b);
 	void write_i8(int8_t i8);

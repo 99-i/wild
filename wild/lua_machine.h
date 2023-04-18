@@ -5,11 +5,11 @@
 #include "player.h"
 #include "packet.h"
 
-struct lua_runnable;
+struct w_runnable;
 
 struct runnable_entry
 {
-	lua_runnable *runnable;
+	w_runnable *runnable;
 	int32_t ticks_left;
 };
 
@@ -28,24 +28,36 @@ public:
 	void start();
 
 	//called when a packet is received by a player.
-	void receive_packet(w_client *client, w_packet packet);
+	void receive_packet(w_client *client, w_packet *packet);
 
 	//called when the game ticks.
 	void tick();
 
-	void register_runnable(lua_runnable *runnable);
+	void register_runnable(w_runnable *runnable);
 	void stop_runnable(uint32_t id);
 
 	//list of all currently running runnables.
 	std::vector<runnable_entry *> runnables;
 };
 
-struct lua_runnable
+struct w_runnable
 {
-	sol::function f;
+	sol::function lua_f;
+	//void*: any data
+	//uint32_t: runnable ID
+	typedef std::function<void(void *, uint32_t)> c_function_t;
+	c_function_t c_f;
+	void *data;
 	lua_machine *machine;
-	lua_runnable(lua_machine *machine, sol::function f);
-	~lua_runnable();
+	w_runnable(lua_machine *machine, sol::function f);
+	w_runnable(lua_machine *machine, c_function_t f, void *data);
+	~w_runnable();
+
+	enum class function_type
+	{
+		LUA_F,
+		C_F
+	} function_type;
 
 	enum class run_type
 	{
@@ -64,4 +76,6 @@ struct lua_runnable
 	void run_later(uint32_t when);
 
 	void run_timer(uint32_t delay, uint32_t interval);
+
+	void call();
 };

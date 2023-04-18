@@ -1,33 +1,42 @@
 #pragma once
-#include <uv.h>
-#include <vector>
+#include <array>
+#include <asio.hpp>
 #include <thread>
+#include <mutex>
 
 #include "game.h"
 
 struct w_client;
 struct w_packet;
 
+using asio::ip::tcp;
 struct w_server
 {
+	static constexpr uint32_t max_players = 100;
 	bool running = false;
 	int port;
 
-	uv_loop_t loop;
-	uv_tcp_t tcp_handle;
-	std::thread run_thread;
+	asio::io_context context;
+	tcp::acceptor acceptor;
+
+	std::thread accept_thread;
+	std::thread game_thread;
+
+	std::mutex game_mutex;
 	w_game game;
 
-	void on_connection(int status);
-	void loop_start();
-	void handle_read(w_client *client, ssize_t nread, const uv_buf_t *buffer);
+	void start_accept();
+
+	void handle_accept(tcp::socket *socket, asio::error_code ec);
 
 	void read_from_client(w_client *client, std::vector<uint8_t> data);
 
 	//called when a client sends malformed data
 	void client_malformed_packet(w_client *client);
 
-	void handle_client_packet(w_client *client, w_packet packet);
+	void client_disconnected(w_client *client);
+
+	void handle_client_packet(w_client *client, w_packet *packet);
 
 	std::vector<w_client *> clients;
 

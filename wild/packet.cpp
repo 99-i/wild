@@ -2,8 +2,9 @@
 #include "packet.h"
 #include "server.h"
 #include <plog/Log.h>
-void w_packet_read_stream::handle_data(uint8_t byte)
+bool w_packet_read_stream::handle_data(uint8_t byte)
 {
+	bool ret = true;
 	switch (this->read_state)
 	{
 		//this is a byte of the length varint.
@@ -24,11 +25,12 @@ void w_packet_read_stream::handle_data(uint8_t byte)
 
 			if (this->length_remaining <= 0)
 			{
-				this->read_packet();
+				ret = this->read_packet();
 				this->reset();
 			}
 		}
 	}
+	return ret;
 }
 
 void w_packet_read_stream::reset()
@@ -39,19 +41,13 @@ void w_packet_read_stream::reset()
 	this->buffer.clear();
 }
 
-#define KICK_CLIENT do\
-	{\
-		this->client->server->client_malformed_packet(this->client);\
-		return;\
-	} while (0)\
-
-void w_packet_read_stream::read_packet()
+bool w_packet_read_stream::read_packet()
 {
 	auto needle = this->buffer.begin();
 	auto end = this->buffer.end();
 	std::optional<int32_t> id = read_fn::read_varint(needle, end);
 	if (!id.has_value())
-		KICK_CLIENT;
+		return false;
 
 	const w_packet_form *form;
 	bool found_form = false;
@@ -67,12 +63,12 @@ void w_packet_read_stream::read_packet()
 	if (!found_form)
 	{
 		//KICK_CLIENT;
-		return;
+		return true;
 	}
 
-	w_packet packet;
-	packet.name = form->name;
-	packet.form = form;
+	w_packet *packet = new w_packet();
+	packet->name = form->name;
+	packet->form = form;
 	for (int i = 0; i < form->num_fields; i++)
 	{
 		w_packet_form::field field = form->fields[i];
@@ -82,99 +78,99 @@ void w_packet_read_stream::read_packet()
 			{
 				auto res = read_fn::read_bool(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::BYTE:
 			{
 				auto res = read_fn::read_i8(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::UNSIGNED_BYTE:
 			{
 				auto res = read_fn::read_u8(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::SHORT:
 			{
 				auto res = read_fn::read_i16(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::UNSIGNED_SHORT:
 			{
 				auto res = read_fn::read_u16(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::INT:
 			{
 				auto res = read_fn::read_i32(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::LONG:
 			{
 				auto res = read_fn::read_i64(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::FLOAT:
 			{
 				auto res = read_fn::read_float(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::DOUBLE:
 			{
 				auto res = read_fn::read_double(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::STRING:
 			{
 				auto res = read_fn::read_string(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			case w_data_type::VARINT:
 			{
 				auto res = read_fn::read_varint(needle, end);
 				if (!res.has_value())
-					KICK_CLIENT;
+					return false;
 
-				packet.data.emplace(field.name, res.value());
+				packet->data.emplace(field.name, res.value());
 			}
 			break;
 			default:
@@ -183,15 +179,19 @@ void w_packet_read_stream::read_packet()
 	}
 
 	this->client->server->handle_client_packet(this->client, packet);
+	return true;
 }
-#undef KICK_CLIENT
 
 //handle incoming data for this client.
-void w_packet_read_stream::handle_data(const std::vector<uint8_t> &data)
+bool w_packet_read_stream::handle_data(const std::vector<uint8_t> &data)
 {
+	bool dc = true;
 	for (int i = 0; i < data.size(); i++)
 	{
-		this->handle_data(data[i]);
+		if (!this->handle_data(data[i]))
+		{
+			return true;
+		}
 	}
 }
 

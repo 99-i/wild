@@ -19,6 +19,9 @@
     <Filter Include="Source Files\lua">
       <UniqueIdentifier>{cfcf0953-6f0b-48bd-b6de-c5146efc4cab}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\util">
+      <UniqueIdentifier>{85c115d3-69b0-48fb-89f2-c6454c4ab6f9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -80,9 +83,6 @@
     <ClInclude Include="lfs.h">
       <Filter>Header Files\lua</Filter>
     </ClInclude>
-    <ClInclude Include="lprefix.h">
-      <Filter>Header Files\lua</Filter>
-    </ClInclude>
     <ClInclude Include="clientbound_packet.h">
       <Filter>Header Files\lua</Filter>
     </ClInclude>
@@ -90,6 +90,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="console.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="random.h">
+      <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="thread_pool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
