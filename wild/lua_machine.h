@@ -1,5 +1,4 @@
 #pragma once
-#include <sol/sol.hpp>
 #include <mutex>
 
 #include "player.h"
@@ -18,7 +17,6 @@ struct lua_machine
 {
 private:
 	std::mutex state_mutex;
-	sol::state *state = nullptr;
 	w_game *game;
 public:
 	lua_machine(w_game *game);
@@ -42,15 +40,13 @@ public:
 
 struct w_runnable
 {
-	sol::function lua_f;
+	//sol::function lua_f;
 	//void*: any data
 	//uint32_t: runnable ID
-	typedef std::function<void(void *, uint32_t)> c_function_t;
+	typedef std::function<void(uint32_t)> c_function_t;
 	c_function_t c_f;
-	void *data;
 	lua_machine *machine;
-	w_runnable(lua_machine *machine, sol::function f);
-	w_runnable(lua_machine *machine, c_function_t f, void *data);
+	w_runnable(lua_machine *machine, c_function_t f);
 	~w_runnable();
 
 	enum class function_type

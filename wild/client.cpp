@@ -3,6 +3,7 @@
 #include <tuple>
 #include <nlohmann/json.hpp>
 #include <cstddef>
+#include <functional>
 #include <zlib.h>
 #include <plog/Log.h>
 #include "random.h"
@@ -446,8 +447,10 @@ void w_client::spawn_player_in()
 	this->send_packet(&player_position_and_look);
 
 	this->state = client_state::PLAY;
-
-	w_runnable *runnable = new w_runnable(&this->server->game.lua_vm, client_keepalive_cb, this);
+	w_runnable *runnable = new w_runnable(&this->server->game.lua_vm, [this](uint32_t id)
+		{
+			this->do_keepalive(id);
+		});
 	runnable->run_timer(0, 20 * 15);
 }
 
