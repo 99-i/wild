@@ -5,6 +5,7 @@
 #include "common.h"
 #include "server.h"
 
+//TODO: fix this horrible and shitty code
 namespace wild
 {
 	struct console
