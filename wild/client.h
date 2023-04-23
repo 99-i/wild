@@ -19,7 +19,7 @@ namespace wild
 
 	struct client
 	{
-		static constexpr size_t READ_BUFFER_SIZE = 10000;
+		static constexpr size_t READ_BUFFER_SIZE = 512;
 		client_state state = client_state::HANDSHAKING;
 		wild::server *server;
 
@@ -39,8 +39,6 @@ namespace wild
 		void send_packet(const wild::clientbound_packet *packet, std::function<void(wild::client *)> callback);
 		enum
 		{
-			// haven't gotten any new packet data/just finished a packet
-			BEGIN,
 			//in the middle of reading the length varint
 			READ_LENGTH_VARINT,
 			//waiting for all the data to be sent so we can read it.

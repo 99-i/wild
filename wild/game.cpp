@@ -11,16 +11,50 @@ wild::game::game(wild::server *server) : server(server)
 {
 }
 
+void wild::game::queue_event(game_event event)
+{
+	this->pending_events_mutex.lock();
+	this->pending_events.push(event);
+	this->pending_events_mutex.unlock();
+}
+
+void wild::game::handle_event(game_event event)
+{
+	switch (event.type)
+	{
+		case game_event::type::PLAYER_JOIN:
+			return handle_player_join_event(event._player_join);
+		case game_event::type::PLAYER_MOVE:
+			return handle_player_move_event(event._player_move);
+	}
+}
+
+void wild::game::handle_player_join_event(game_event::player_join_event event)
+{
+	//todo: spawn player in
+}
+void wild::game::handle_player_move_event(game_event::player_move_event event)
+{
+}
+
 //todo: message queue, non-busy wait//don't sleep
 void wild::game::start()
 {
 	while (true)
 	{
-		auto begin = std::chrono::high_resolution_clock::now();
-		this->tick();
-		auto end = std::chrono::high_resolution_clock::now();
-		auto time_left = std::chrono::milliseconds(TICK_RATE_MS) - std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-		std::this_thread::sleep_for(time_left);
+		this->pending_updates_mutex.lock();
+		while (!this->pending_updates.empty())
+		{
+			this->handle_update(this->pending_updates.front());
+			this->pending_updates.pop();
+		}
+		this->pending_updates_mutex.unlock();
+		auto now = std::chrono::high_resolution_clock::now();
+		if ((now - this->time_since_last_tick) > 50ms)
+		{
+			this->tick();
+			this->time_since_last_tick = std::chrono::high_resolution_clock::now();
+		}
 	}
 }
 #define STOP_RUNNABLE it = this->runnables.erase(it);\
@@ -57,6 +91,10 @@ void wild::game::tick()
 		entry->ticks_left--;
 	}
 	this->runnables_mutex.unlock();
+
+	//todo
+	//this->tick_physics();
+	//this->tick_chunks();
 }
 #undef STOP
 

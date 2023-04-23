@@ -1,4 +1,5 @@
 #pragma once
+#include <queue>
 #include "common.h"
 
 namespace wild
@@ -6,7 +7,7 @@ namespace wild
 	struct player;
 	struct server;
 
-	struct game_update
+	struct game_event
 	{
 		enum class type
 		{
@@ -15,10 +16,15 @@ namespace wild
 		} type;
 		union
 		{
-			struct
+			struct player_join_event
 			{
 				wild::player *player;
-			} _join;
+			} _player_join;
+			struct player_move_event
+			{
+				wild::player *player;
+				vec3f new_pos;
+			} _player_move;
 		};
 	};
 
@@ -57,6 +63,18 @@ namespace wild
 		wild::server *server;
 		std::chrono::high_resolution_clock::time_point time_since_last_tick;
 		game(wild::server *server);
+
+		std::mutex pending_events_mutex;
+		std::queue<game_event> pending_events;
+
+		void queue_event(game_event event);
+
+		void handle_event(game_event event);
+
+#pragma region UpdateHandlers
+		void handle_player_join_event(game_event::player_join_event event);
+		void handle_player_move_event(game_event::player_move_event event);
+#pragma endregion
 
 		std::mutex runnables_mutex;
 		//list of all currently running runnables or runnables that are queued to stop.

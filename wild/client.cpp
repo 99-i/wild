@@ -49,7 +49,6 @@ bool wild::client::handle_data(const std::vector<uint8_t> &data)
 		switch (this->read_state)
 		{
 			//this is a byte of the length varint.
-			case BEGIN:
 			case READ_LENGTH_VARINT:
 			{
 				if (this->packet_length_reader.push_byte(byte))
@@ -225,7 +224,7 @@ bool wild::client::read_packet(std::vector<uint8_t> data)
 
 void wild::client::reset_reader()
 {
-	this->read_state = BEGIN;
+	this->read_state = READ_LENGTH_VARINT;
 	this->packet_length_reader.reset();
 	this->packet_length_remaining = 0;
 	this->packet_buffer.clear();
