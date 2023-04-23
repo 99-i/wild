@@ -1,30 +1,97 @@
 #include <chrono>
+#include <plog/Log.h>
+#include "common.h"
 #include "game.h"
-#include "server.h"
+#include "random.h"
 
-constexpr int TICK_RATE = 20;
+constexpr int TICK_RATE_MS = 50;
+using namespace std::literals;
 
-w_game::w_game(w_server *server) : server(server), tick_timer(server->context)
+wild::game::game(wild::server *server) : server(server)
 {
 }
 
-void w_game::start()
+//todo: message queue, non-busy wait//don't sleep
+void wild::game::start()
 {
-	this->lua_vm.start();
 	while (true)
 	{
 		auto begin = std::chrono::high_resolution_clock::now();
 		this->tick();
 		auto end = std::chrono::high_resolution_clock::now();
-		auto time_tick_took = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-		auto time_left = std::chrono::milliseconds(1000 / TICK_RATE) - time_tick_took;
-
-		this->tick_timer.expires_after(time_left);
-
-		this->tick_timer.wait();
+		auto time_left = std::chrono::milliseconds(TICK_RATE_MS) - std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+		std::this_thread::sleep_for(time_left);
 	}
 }
-void w_game::tick()
+#define STOP_RUNNABLE it = this->runnables.erase(it);\
+				delete entry;\
+				if (it >= this->runnables.end()) {break;}
+void wild::game::tick()
 {
-	this->lua_vm.tick();
+	this->runnables_mutex.lock();
+	for (auto it = this->runnables.begin(); it != this->runnables.end(); it++)
+	{
+		runnable_entry *entry = *it;
+		if (entry->stop)
+		{
+			STOP_RUNNABLE;
+			continue;
+		}
+		if (entry->ticks_left <= 0)
+		{
+			//todo
+			bool continue_runnable = entry->call();
+			if (!continue_runnable)
+			{
+				STOP_RUNNABLE;
+				continue;
+			}
+			if (entry->run_type == wild::runnable::run_type::TIMER)
+			{
+				entry->ticks_left = entry->interval;
+			} else
+			{
+				STOP_RUNNABLE;
+			}
+		}
+		entry->ticks_left--;
+	}
+	this->runnables_mutex.unlock();
+}
+#undef STOP
+
+void wild::game::stop_runnable(uint32_t id)
+{
+	this->runnables_mutex.lock();
+	for (auto it = this->runnables.begin(); it != this->runnables.end(); it++)
+	{
+		if ((*it)->runnable_id == id)
+		{
+			(*it)->stop = true;
+			break;
+		}
+	}
+	this->runnables_mutex.unlock();
+}
+
+uint32_t wild::game::create_c_runnable(wild::runnable::c_function_t f, wild::runnable::run_settings_t settings)
+{
+	runnable_entry *entry = new runnable_entry;
+	entry->delay = std::get<1>(settings);
+	entry->run_type = std::get<0>(settings);
+	if (entry->run_type == wild::runnable::run_type::TIMER)
+	{
+		entry->interval = std::get<2>(settings);
+	}
+	entry->ticks_left = entry->delay;
+	entry->c_f = f;
+	entry->function_type = runnable_entry::function_type_e::C_FUNCTION;
+	entry->runnable_id = Random::random_u32();
+
+	this->runnables_mutex.lock();
+	PLOGD << "Starting runnable " << entry->runnable_id;
+	this->runnables.push_back(entry);
+	this->runnables_mutex.unlock();
+
+	return entry->runnable_id;
 }

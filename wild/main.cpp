@@ -1,20 +1,11 @@
-#include <winsock2.h>
-#include <string>
-#include <iostream>
-#include <plog/Initializers/ConsoleInitializer.h>
-#include <chrono>
-#include <random>
-#include "random.h"
 #include "console.h"
-#include "packet.h"
-#include "server.h"
 #include "main.h"
-
-console c;
 
 int main(int argc, char **argv)
 {
-	static WildAppender appender;
+	wild::console c;
+	wild::logging::c = &c;
+	static wild::logging::WildAppender appender;
 	plog::init(plog::verbose, &appender);
 
 	WSADATA wsa;
@@ -25,8 +16,7 @@ int main(int argc, char **argv)
 		WSACleanup();
 		exit(1);
 	}
-
-	w_server *server = new w_server();
+	wild::server *server = new wild::server();
 	c.server = server;
 	server->run();
 	c.start();

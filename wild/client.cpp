@@ -1,63 +1,237 @@
-#include <asio.hpp>
-#include <cassert>
-#include <tuple>
-#include <nlohmann/json.hpp>
-#include <cstddef>
-#include <functional>
-#include <zlib.h>
 #include <plog/Log.h>
+#include <map>
+#include <nlohmann/json.hpp>
+#include <zlib.h>
+#include "client.h"
+#include "clientbound_packet.h"
+#include "common.h"
+#include "packet.h"
 #include "random.h"
 #include "server.h"
-#include "client.h"
-#include "packet.h"
-#include "clientbound_packet.h"
 
-typedef void(w_client:: *packet_callback)(const w_packet *packet);
+typedef void(wild::client:: *packet_callback)(const wild::packet *packet);
 
-std::map<std::tuple<w_client::client_state, uint8_t>, packet_callback> callback_map = {
-	{{w_client::client_state::HANDSHAKING, 0x00}, &w_client::Handle_HANDSHAKING_Handshake},
-	{{w_client::client_state::PLAY,        0x00}, &w_client::Handle_PLAY_KeepAlive},
-	{{w_client::client_state::PLAY,        0x01}, &w_client::Handle_PLAY_ChatMessage},
-	{{w_client::client_state::PLAY,        0x02}, &w_client::Handle_PLAY_UseEntity},
-	{{w_client::client_state::PLAY,        0x03}, &w_client::Handle_PLAY_Player},
-	{{w_client::client_state::PLAY,        0x04}, &w_client::Handle_PLAY_PlayerPosition},
-	{{w_client::client_state::PLAY,        0x05}, &w_client::Handle_PLAY_PlayerLook},
-	{{w_client::client_state::PLAY,        0x06}, &w_client::Handle_PLAY_PlayerPositionAndLook},
-	{{w_client::client_state::PLAY,        0x07}, &w_client::Handle_PLAY_PlayerDigging},
-	{{w_client::client_state::PLAY,        0x09}, &w_client::Handle_PLAY_HeldItemChange},
-	{{w_client::client_state::PLAY,        0x0A}, &w_client::Handle_PLAY_Animation},
-	{{w_client::client_state::PLAY,        0x0B}, &w_client::Handle_PLAY_EntityAction},
-	{{w_client::client_state::PLAY,        0x0C}, &w_client::Handle_PLAY_SteerVehicle},
-	{{w_client::client_state::PLAY,        0x0D}, &w_client::Handle_PLAY_CloseWindow},
-	{{w_client::client_state::PLAY,        0x0F}, &w_client::Handle_PLAY_ConfirmTransaction},
-	{{w_client::client_state::PLAY,        0x11}, &w_client::Handle_PLAY_EnchantItem},
-	{{w_client::client_state::PLAY,        0x12}, &w_client::Handle_PLAY_UpdateSign},
-	{{w_client::client_state::PLAY,        0x13}, &w_client::Handle_PLAY_PlayerAbilities},
-	{{w_client::client_state::PLAY,        0x14}, &w_client::Handle_PLAY_TabComplete},
-	{{w_client::client_state::PLAY,        0x15}, &w_client::Handle_PLAY_ClientSettings},
-	{{w_client::client_state::PLAY,        0x16}, &w_client::Handle_PLAY_ClientStatus},
-	{{w_client::client_state::STATUS,      0x00}, &w_client::Handle_STATUS_Request},
-	{{w_client::client_state::STATUS,      0x01}, &w_client::Handle_STATUS_Ping},
-	{{w_client::client_state::LOGIN,       0x00}, &w_client::Handle_LOGIN_LoginStart},
+std::map<std::tuple<wild::client_state, uint8_t>, packet_callback> callback_map = {
+	{{wild::client_state::HANDSHAKING, 0x00}, &wild::client::Handle_HANDSHAKING_Handshake},
+	{{wild::client_state::STATUS,      0x00}, &wild::client::Handle_STATUS_Request},
+	{{wild::client_state::STATUS,      0x01}, &wild::client::Handle_STATUS_Ping},
+	{{wild::client_state::LOGIN,       0x00}, &wild::client::Handle_LOGIN_LoginStart},
+	{{wild::client_state::PLAY,        0x00}, &wild::client::Handle_PLAY_KeepAlive},
+	{{wild::client_state::PLAY,        0x01}, &wild::client::Handle_PLAY_ChatMessage},
+	{{wild::client_state::PLAY,        0x02}, &wild::client::Handle_PLAY_UseEntity},
+	{{wild::client_state::PLAY,        0x03}, &wild::client::Handle_PLAY_Player},
+	{{wild::client_state::PLAY,        0x04}, &wild::client::Handle_PLAY_PlayerPosition},
+	{{wild::client_state::PLAY,        0x05}, &wild::client::Handle_PLAY_PlayerLook},
+	{{wild::client_state::PLAY,        0x06}, &wild::client::Handle_PLAY_PlayerPositionAndLook},
+	{{wild::client_state::PLAY,        0x07}, &wild::client::Handle_PLAY_PlayerDigging},
+	{{wild::client_state::PLAY,        0x09}, &wild::client::Handle_PLAY_HeldItemChange},
+	{{wild::client_state::PLAY,        0x0A}, &wild::client::Handle_PLAY_Animation},
+	{{wild::client_state::PLAY,        0x0B}, &wild::client::Handle_PLAY_EntityAction},
+	{{wild::client_state::PLAY,        0x0C}, &wild::client::Handle_PLAY_SteerVehicle},
+	{{wild::client_state::PLAY,        0x0D}, &wild::client::Handle_PLAY_CloseWindow},
+	{{wild::client_state::PLAY,        0x0F}, &wild::client::Handle_PLAY_ConfirmTransaction},
+	{{wild::client_state::PLAY,        0x11}, &wild::client::Handle_PLAY_EnchantItem},
+	{{wild::client_state::PLAY,        0x12}, &wild::client::Handle_PLAY_UpdateSign},
+	{{wild::client_state::PLAY,        0x13}, &wild::client::Handle_PLAY_PlayerAbilities},
+	{{wild::client_state::PLAY,        0x14}, &wild::client::Handle_PLAY_TabComplete},
+	{{wild::client_state::PLAY,        0x15}, &wild::client::Handle_PLAY_ClientSettings},
+	{{wild::client_state::PLAY,        0x16}, &wild::client::Handle_PLAY_ClientStatus},
 };
 
-w_client::w_client(tcp::socket *socket, w_server *server) : server(server), socket(socket)
+wild::client::client(asio::ip::tcp::socket *socket, wild::server *server) : server(server), socket(socket)
 {
-	this->read_stream = new w_packet_read_stream(this);
 }
 
-bool w_client::handle_data(const std::vector<uint8_t> &data)
+bool wild::client::handle_data(const std::vector<uint8_t> &data)
 {
-	return this->read_stream->handle_data(data);
+	for (uint8_t byte : data)
+	{
+		switch (this->read_state)
+		{
+			//this is a byte of the length varint.
+			case BEGIN:
+			case READ_LENGTH_VARINT:
+			{
+				if (this->packet_length_reader.push_byte(byte))
+				{
+					this->read_state = WAITING_FOR_ALL_DATA;
+					this->packet_length_remaining = this->packet_length_reader.value;
+				}
+				break;
+			}
+			case WAITING_FOR_ALL_DATA:
+			{
+				this->packet_length_remaining--;
+				this->packet_buffer.push_back(byte);
+
+				if (this->packet_length_remaining <= 0)
+				{
+					if (!this->read_packet(this->packet_buffer))
+						return false;
+					this->reset_reader();
+				}
+			}
+		}
+	}
+	return true;
 }
 
-void w_client::reset_reader()
+bool wild::client::read_packet(std::vector<uint8_t> data)
 {
-	delete this->read_stream;
-	this->read_stream = new w_packet_read_stream(this);
+	auto needle = this->packet_buffer.begin();
+	auto end = this->packet_buffer.end();
+	std::optional<int32_t> id = read_fn::read_varint(needle, end);
+	if (!id.has_value())
+		return false;
+
+	const packet_form *form;
+	bool found_form = false;
+	for (int i = 0; i < FORMS_SIZE; i++)
+	{
+		form = &forms[i];
+		if (form->id == id && this->state == form->state)
+		{
+			found_form = true;
+			break;
+		}
+	}
+	if (!found_form)
+	{
+		//KICK_CLIENT;
+		return true;
+	}
+
+	packet *packet = new wild::packet();
+	packet->name = form->name;
+	packet->form = form;
+	for (int i = 0; i < form->num_fields; i++)
+	{
+		packet_form::field field = form->fields[i];
+		if (needle >= end)
+		{
+			delete packet;
+			this->server->client_malformed_packet(this);
+			return false;
+		}
+		switch (field.type)
+		{
+			case data_type::BOOL:
+			{
+				auto res = read_fn::read_bool(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::BYTE:
+			{
+				auto res = read_fn::read_i8(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::UNSIGNED_BYTE:
+			{
+				auto res = read_fn::read_u8(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::SHORT:
+			{
+				auto res = read_fn::read_i16(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::UNSIGNED_SHORT:
+			{
+				auto res = read_fn::read_u16(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::INT:
+			{
+				auto res = read_fn::read_i32(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::LONG:
+			{
+				auto res = read_fn::read_i64(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::FLOAT:
+			{
+				auto res = read_fn::read_float(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::DOUBLE:
+			{
+				auto res = read_fn::read_double(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::STRING:
+			{
+				auto res = read_fn::read_string(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			case data_type::VARINT:
+			{
+				auto res = read_fn::read_varint(needle, end);
+				if (!res.has_value())
+					return false;
+
+				packet->data.emplace(field.name, res.value());
+			}
+			break;
+			default:
+				break;
+		}
+	}
+
+	this->server->handle_client_packet(this, packet);
+	return true;
 }
 
-void w_client::start_read()
+void wild::client::reset_reader()
+{
+	this->read_state = BEGIN;
+	this->packet_length_reader.reset();
+	this->packet_length_remaining = 0;
+	this->packet_buffer.clear();
+}
+
+void wild::client::start_read()
 {
 	bool dc = false;
 	while (!dc)
@@ -78,24 +252,26 @@ void w_client::start_read()
 	this->server->client_disconnected(this);
 }
 
-void w_client::handle_write(asio::error_code ec)
+void wild::client::handle_write(asio::error_code ec)
 {
 	if (ec)
 	{
-		PLOGF << "Error writing.";
+		PLOGF << "Error writing: " << ec.message();
+		this->server->client_disconnected(this);
+		return;
 	}
 	this->write_queue_mutex.lock();
 	this->write_in_progress = false;
 	if (!this->write_queue.empty())
 	{
 		this->write_in_progress = true;
-		asio::async_write(*(this->socket), asio::buffer(this->write_queue.front().data(), this->write_queue.front().size()), std::bind(&w_client::handle_write, this, std::placeholders::_1));
+		asio::async_write(*(this->socket), asio::buffer(this->write_queue.front().data(), this->write_queue.front().size()), std::bind(&wild::client::handle_write, this, std::placeholders::_1));
 		this->write_queue.pop_front();
 	}
 	this->write_queue_mutex.unlock();
 }
 
-void w_client::send_packet(const w_clientbound_packet *packet)
+void wild::client::send_packet(const wild::clientbound_packet *packet)
 {
 	this->write_queue_mutex.lock();
 	//tod
@@ -111,13 +287,13 @@ void w_client::send_packet(const w_clientbound_packet *packet)
 	if (this->write_queue.size() <= 1)
 	{
 		this->write_in_progress = true;
-		asio::async_write(*(this->socket), asio::buffer(this->write_queue.front().data(), this->write_queue.front().size()), std::bind(&w_client::handle_write, this, std::placeholders::_1));
+		asio::async_write(*(this->socket), asio::buffer(this->write_queue.front().data(), this->write_queue.front().size()), std::bind(&wild::client::handle_write, this, std::placeholders::_1));
 		this->write_queue.pop_front();
 	}
 	this->write_queue_mutex.unlock();
 }
 
-void w_client::send_packet(const w_clientbound_packet *packet, std::function<void(w_client *)> callback)
+void wild::client::send_packet(const wild::clientbound_packet *packet, std::function<void(wild::client *)> callback)
 {
 	std::vector<uint8_t> id_varint = write_fn::write_varint(packet->id);
 	std::vector<uint8_t> length_varint = write_fn::write_varint(id_varint.size() + packet->data.size());
@@ -130,43 +306,53 @@ void w_client::send_packet(const w_clientbound_packet *packet, std::function<voi
 	asio::async_write(*(this->socket), asio::buffer(all), std::bind(callback, this));
 }
 
-void w_client::receive_packet(const w_packet *packet)
+void wild::client::receive_packet(const wild::packet *packet)
 {
 	(this->*(callback_map[std::make_tuple(this->state, packet->form->id)]))(packet);
 }
 
-void w_client::do_keepalive(uint32_t runnable_id)
+void wild::client::do_keepalive()
 {
-	this->keepalive_runnable_id = runnable_id;
-	w_clientbound_packet keepalive(0x00);
 	this->keepalive_id = Random::random_i32();
+	wild::clientbound_packet keepalive(0x00);
 	keepalive.write_i32(this->keepalive_id);
 	this->send_packet(&keepalive);
 }
-void w_client::kick()
-{
-	w_clientbound_packet disconnect(0x40);
 
-	nlohmann::json kick_reason = { {"text", "You have been kicked"} };
+void wild::client::start_keepalive()
+{
+	this->keepalive_runnable_id = this->server->game.create_c_runnable([this](uint32_t runnable_id)
+		{
+			this->do_keepalive();
+			return true;
+		}, std::make_tuple(wild::runnable::run_type::TIMER, 0, 10));
+}
+
+void wild::client::kick(std::string reason)
+{
+	wild::clientbound_packet disconnect(0x40);
+
+	nlohmann::json kick_reason = { {"text", reason} };
 
 	disconnect.write_string(kick_reason.dump());
 
-	this->send_packet(&disconnect, [](w_client *client)
+	this->send_packet(&disconnect, [](wild::client *client)
 		{
 			client->server->client_disconnected(client);
 		});
 }
 
-w_client::~w_client()
+wild::client::~client()
 {
-	delete this->read_stream;
+	if (this->keepalive_runnable_id != 0)
+		this->server->game.stop_runnable(this->keepalive_runnable_id);
+	this->socket->shutdown(asio::ip::tcp::socket::shutdown_both);
 	this->socket->cancel();
 	this->socket->close();
-	this->server->game.lua_vm.stop_runnable(this->keepalive_runnable_id);
 	delete this->socket;
 }
 
-void w_client::Handle_HANDSHAKING_Handshake(const w_packet *packet)
+void wild::client::Handle_HANDSHAKING_Handshake(const wild::packet *packet)
 {
 	//(5 as of 1.7.10)
 	int32_t protocol_version = std::get<int32_t>(packet->data.at("protocol_version"));
@@ -185,9 +371,10 @@ void w_client::Handle_HANDSHAKING_Handshake(const w_packet *packet)
 		this->state = client_state::LOGIN;
 	}
 }
-void w_client::Handle_STATUS_Request(const w_packet *packet)
+
+void wild::client::Handle_STATUS_Request(const wild::packet *packet)
 {
-	w_clientbound_packet response_packet(0x00);
+	wild::clientbound_packet response_packet(0x00);
 	nlohmann::json response =
 	{
 	{"version", {
@@ -207,51 +394,53 @@ void w_client::Handle_STATUS_Request(const w_packet *packet)
 	response_packet.write_string(response.dump());
 	this->send_packet(&response_packet);
 }
-void w_client::Handle_STATUS_Ping(const w_packet *packet)
+void wild::client::Handle_STATUS_Ping(const wild::packet *packet)
 {
 	int64_t time = std::get<int64_t>(packet->data.at("time"));
 
-	w_clientbound_packet pong(0x01);
+	wild::clientbound_packet pong(0x01);
 	pong.write_i64(time);
 	this->send_packet(&pong);
 }
-void w_client::Handle_LOGIN_LoginStart(const w_packet *packet)
+void wild::client::Handle_LOGIN_LoginStart(const wild::packet *packet)
 {
 	std::string name = std::get<std::string>(packet->data.at("name"));
 
-	w_clientbound_packet login_success(0x02);
+	wild::clientbound_packet login_success(0x02);
 	login_success.write_string("9e59c4b1-7a70-4b01-abba-57d87d1e0c2b");
 	login_success.write_string("eric_Yale");
 
 	this->send_packet(&login_success);
+	this->state = client_state::PLAY;
 
-	this->spawn_player_in();
-	this->send_chunk_updates();
+	this->start_keepalive();
+	//todo: spawn player in
 }
-void w_client::Handle_PLAY_KeepAlive(const w_packet *packet)
+void wild::client::Handle_PLAY_KeepAlive(const wild::packet *packet)
 {
-	int32_t keep_alive_id = std::get<int32_t>(packet->data.at("keep_alive_id"));
-	if (keep_alive_id != this->keepalive_id)
+	int32_t client_keepalive_id = std::get<int32_t>(packet->data.at("keep_alive_id"));
+	if (this->keepalive_id != client_keepalive_id)
 	{
-		this->kick();
+		this->kick("Incorrect KeepAlive ID!");
 	}
+	this->last_time_since_keepalive = std::chrono::high_resolution_clock::now();
 }
-void w_client::Handle_PLAY_ChatMessage(const w_packet *packet)
+void wild::client::Handle_PLAY_ChatMessage(const wild::packet *packet)
 {
 	std::string message = std::get<std::string>(packet->data.at("message"));
 }
-void w_client::Handle_PLAY_UseEntity(const w_packet *packet)
+void wild::client::Handle_PLAY_UseEntity(const wild::packet *packet)
 {
 	int32_t target = std::get<int32_t>(packet->data.at("target"));
 	//0 = Right-click, 1 = Left-click
 	int8_t mouse = std::get<int8_t>(packet->data.at("mouse"));
 }
-void w_client::Handle_PLAY_Player(const w_packet *packet)
+void wild::client::Handle_PLAY_Player(const wild::packet *packet)
 {
 	//True if the client is on the ground, False otherwise
 	bool on_ground = std::get<bool>(packet->data.at("on_ground"));
 }
-void w_client::Handle_PLAY_PlayerPosition(const w_packet *packet)
+void wild::client::Handle_PLAY_PlayerPosition(const wild::packet *packet)
 {
 	//Absolute position
 	double x = std::get<double>(packet->data.at("x"));
@@ -264,7 +453,7 @@ void w_client::Handle_PLAY_PlayerPosition(const w_packet *packet)
 	//True if the client is on the ground, False otherwise
 	bool on_ground = std::get<bool>(packet->data.at("on_ground"));
 }
-void w_client::Handle_PLAY_PlayerLook(const w_packet *packet)
+void wild::client::Handle_PLAY_PlayerLook(const wild::packet *packet)
 {
 	//Absolute rotation on the X Axis, in degrees
 	float yaw = std::get<float>(packet->data.at("yaw"));
@@ -273,7 +462,7 @@ void w_client::Handle_PLAY_PlayerLook(const w_packet *packet)
 	//True if the client is on the ground, False otherwise
 	bool on_ground = std::get<bool>(packet->data.at("on_ground"));
 }
-void w_client::Handle_PLAY_PlayerPositionAndLook(const w_packet *packet)
+void wild::client::Handle_PLAY_PlayerPositionAndLook(const wild::packet *packet)
 {
 	//Absolute position
 	double x = std::get<double>(packet->data.at("x"));
@@ -290,7 +479,7 @@ void w_client::Handle_PLAY_PlayerPositionAndLook(const w_packet *packet)
 	//True if the client is on the ground, False otherwise
 	bool on_ground = std::get<bool>(packet->data.at("on_ground"));
 }
-void w_client::Handle_PLAY_PlayerDigging(const w_packet *packet)
+void wild::client::Handle_PLAY_PlayerDigging(const wild::packet *packet)
 {
 	//The action the player is taking against the block
 	int8_t status = std::get<int8_t>(packet->data.at("status"));
@@ -303,19 +492,19 @@ void w_client::Handle_PLAY_PlayerDigging(const w_packet *packet)
 	//The face being hit
 	int8_t face = std::get<int8_t>(packet->data.at("face"));
 }
-void w_client::Handle_PLAY_HeldItemChange(const w_packet *packet)
+void wild::client::Handle_PLAY_HeldItemChange(const wild::packet *packet)
 {
 	//The slot which the player has selected (0-8)
 	int16_t slot = std::get<int16_t>(packet->data.at("slot"));
 }
-void w_client::Handle_PLAY_Animation(const w_packet *packet)
+void wild::client::Handle_PLAY_Animation(const wild::packet *packet)
 {
 	//Player ID
 	int32_t entity_id = std::get<int32_t>(packet->data.at("entity_id"));
 	//Animation ID
 	int8_t animation = std::get<int8_t>(packet->data.at("animation"));
 }
-void w_client::Handle_PLAY_EntityAction(const w_packet *packet)
+void wild::client::Handle_PLAY_EntityAction(const wild::packet *packet)
 {
 	//Player ID
 	int32_t entity_id = std::get<int32_t>(packet->data.at("entity_id"));
@@ -324,7 +513,7 @@ void w_client::Handle_PLAY_EntityAction(const w_packet *packet)
 	//Horse jump boost. Ranged from 0 -> 100.
 	int32_t jump_boost = std::get<int32_t>(packet->data.at("jump_boost"));
 }
-void w_client::Handle_PLAY_SteerVehicle(const w_packet *packet)
+void wild::client::Handle_PLAY_SteerVehicle(const wild::packet *packet)
 {
 	//Positive to the left of the player
 	float sideways = std::get<float>(packet->data.at("sideways"));
@@ -334,12 +523,12 @@ void w_client::Handle_PLAY_SteerVehicle(const w_packet *packet)
 	//True when leaving the vehicle
 	bool unmount = std::get<bool>(packet->data.at("unmount"));
 }
-void w_client::Handle_PLAY_CloseWindow(const w_packet *packet)
+void wild::client::Handle_PLAY_CloseWindow(const wild::packet *packet)
 {
 	//This is the id of the window that was closed. 0 for inventory.
 	int8_t window_id = std::get<int8_t>(packet->data.at("window_id"));
 }
-void w_client::Handle_PLAY_ConfirmTransaction(const w_packet *packet)
+void wild::client::Handle_PLAY_ConfirmTransaction(const wild::packet *packet)
 {
 	//The id of the window that the action occurred in.
 	int8_t window_id = std::get<int8_t>(packet->data.at("window_id"));
@@ -348,14 +537,14 @@ void w_client::Handle_PLAY_ConfirmTransaction(const w_packet *packet)
 	//Whether the action was accepted.
 	bool accepted = std::get<bool>(packet->data.at("accepted"));
 }
-void w_client::Handle_PLAY_EnchantItem(const w_packet *packet)
+void wild::client::Handle_PLAY_EnchantItem(const wild::packet *packet)
 {
 	//The ID sent by Open Window
 	int8_t window_id = std::get<int8_t>(packet->data.at("window_id"));
 	//The position of the enchantment on the enchantment table window, starting with 0 as the topmost one.
 	int8_t enchantment = std::get<int8_t>(packet->data.at("enchantment"));
 }
-void w_client::Handle_PLAY_UpdateSign(const w_packet *packet)
+void wild::client::Handle_PLAY_UpdateSign(const wild::packet *packet)
 {
 	//Block X Coordinate
 	int32_t x = std::get<int32_t>(packet->data.at("x"));
@@ -372,7 +561,7 @@ void w_client::Handle_PLAY_UpdateSign(const w_packet *packet)
 	//Fourth line of text in the sign
 	std::string line_4 = std::get<std::string>(packet->data.at("line_4"));
 }
-void w_client::Handle_PLAY_PlayerAbilities(const w_packet *packet)
+void wild::client::Handle_PLAY_PlayerAbilities(const wild::packet *packet)
 {
 	int8_t flags = std::get<int8_t>(packet->data.at("flags"));
 	//previous integer value divided by 250
@@ -380,11 +569,11 @@ void w_client::Handle_PLAY_PlayerAbilities(const w_packet *packet)
 	//previous integer value divided by 250
 	float walking_speed = std::get<float>(packet->data.at("walking_speed"));
 }
-void w_client::Handle_PLAY_TabComplete(const w_packet *packet)
+void wild::client::Handle_PLAY_TabComplete(const wild::packet *packet)
 {
 	std::string text = std::get<std::string>(packet->data.at("text"));
 }
-void w_client::Handle_PLAY_ClientSettings(const w_packet *packet)
+void wild::client::Handle_PLAY_ClientSettings(const wild::packet *packet)
 {
 	//en_GB
 	std::string locale = std::get<std::string>(packet->data.at("locale"));
@@ -399,111 +588,7 @@ void w_client::Handle_PLAY_ClientSettings(const w_packet *packet)
 	//Show Cape multiplayer setting
 	bool show_cape = std::get<bool>(packet->data.at("show_cape"));
 }
-void w_client::Handle_PLAY_ClientStatus(const w_packet *packet)
+void wild::client::Handle_PLAY_ClientStatus(const wild::packet *packet)
 {
 	int8_t action_id = std::get<int8_t>(packet->data.at("action_id"));
-}
-
-void client_keepalive_cb(void *client_ptr, uint32_t runnable_id)
-{
-	reinterpret_cast<w_client *>(client_ptr)->do_keepalive(runnable_id);
-}
-
-void w_client::spawn_player_in()
-{
-	w_clientbound_packet join_game(0x01);
-
-	join_game.write_i32(1);
-	join_game.write_i8(0);
-	join_game.write_i8(0);
-	join_game.write_u8(0);
-	join_game.write_u8(0);
-	join_game.write_string("default");
-
-	w_clientbound_packet player_abilities(0x39);
-
-	player_abilities.write_i8(1);
-	player_abilities.write_float((float)1 / (float)250);
-	player_abilities.write_float((float)1 / (float)250);
-
-	w_clientbound_packet spawn_position(0x05);
-	spawn_position.write_i32(0);
-	spawn_position.write_i32(0);
-	spawn_position.write_i32(0);
-
-	w_clientbound_packet player_position_and_look(0x08);
-	player_position_and_look.write_double(8);
-	player_position_and_look.write_double(194);
-	player_position_and_look.write_double(8);
-
-	player_position_and_look.write_float(0);
-	player_position_and_look.write_float(0);
-
-	player_position_and_look.write_bool(false);
-
-	this->send_packet(&join_game);
-	this->send_packet(&player_abilities);
-	this->send_packet(&spawn_position);
-	this->send_packet(&player_position_and_look);
-
-	this->state = client_state::PLAY;
-	w_runnable *runnable = new w_runnable(&this->server->game.lua_vm, [this](uint32_t id)
-		{
-			this->do_keepalive(id);
-		});
-	runnable->run_timer(0, 20 * 15);
-}
-
-void w_client::send_chunk_updates()
-{
-	w_clientbound_packet chunk_data(0x21);
-	chunk_data.write_i32(0);
-	chunk_data.write_i32(0);
-	chunk_data.write_bool(true);
-	chunk_data.write_i16(0b0000100000000000);
-	chunk_data.write_i16(0);
-
-	std::vector<uint8_t> data;
-	int num_chunks = 1;
-
-	uint8_t metadata = 0;
-	uint8_t block_light = 0;
-	uint8_t skylight = 0;
-	uint8_t add = 0;
-
-	for (int i = 0; i < 16 * 16 * 16 * num_chunks; i++)
-	{
-		data.push_back(4);
-	}
-	for (int i = 0; i < 16 * 16 * 16 * num_chunks; i++)
-	{
-		data.push_back((metadata << 4) | block_light);
-	}
-	for (int i = 0; i < 16 * 16 * 16 * num_chunks; i++)
-	{
-		data.push_back((skylight << 4) | add);
-	}
-	for (int i = 0; i < 256; i++)
-	{
-		data.push_back(7);
-	}
-
-	uLong compressed_size = compressBound(data.size());
-	uint8_t *compressed = new uint8_t[compressed_size];
-	compress(compressed, &compressed_size, data.data(), data.size());
-	auto vec = std::vector<uint8_t>(compressed, compressed + compressed_size);
-	delete[] compressed;
-
-	chunk_data.write_i32(vec.size());
-	for (auto it = vec.begin(); it != vec.end(); it++)
-	{
-		chunk_data.write_i8(*it);
-	}
-
-	w_clientbound_packet time_update(0x03);
-	time_update.write_i64(20000);
-	time_update.write_i64(18000);
-
-	this->send_packet(&chunk_data);
-	this->send_packet(&time_update);
 }

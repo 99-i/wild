@@ -42,12 +42,6 @@
     <ClCompile Include="packet_forms.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="lua_machine.cpp">
-      <Filter>Source Files\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="lfs.c">
-      <Filter>Source Files\lua</Filter>
-    </ClCompile>
     <ClCompile Include="clientbound_packet.cpp">
       <Filter>Source Files\lua</Filter>
     </ClCompile>
@@ -77,12 +71,6 @@
     <ClInclude Include="main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="lua_machine.h">
-      <Filter>Header Files\lua</Filter>
-    </ClInclude>
-    <ClInclude Include="lfs.h">
-      <Filter>Header Files\lua</Filter>
-    </ClInclude>
     <ClInclude Include="clientbound_packet.h">
       <Filter>Header Files\lua</Filter>
     </ClInclude>
@@ -95,7 +83,7 @@
     <ClInclude Include="random.h">
       <Filter>Header Files\util</Filter>
     </ClInclude>
-    <ClInclude Include="thread_pool.h">
+    <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

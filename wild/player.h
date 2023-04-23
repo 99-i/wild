@@ -1,8 +1,11 @@
 #pragma once
-#include <string>
+#include "common.h"
 
-struct w_game;
-struct w_player
+namespace wild
 {
-	std::string username = "asdf";
-};
+	struct player
+	{
+		std::string username = "username";
+		wild::vec3f pos;
+	};
+}

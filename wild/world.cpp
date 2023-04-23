@@ -1,6 +1,6 @@
 #include "world.h"
 
-void w_world::load_chunk(int32_t x, uint8_t y, int32_t z)
+void wild::world::load_chunk(int32_t x, uint8_t y, int32_t z)
 {
 	//check if chunk is already loaded.
 	for (auto it = this->loaded_chunks.begin(); it != this->loaded_chunks.end(); it++)
@@ -11,10 +11,10 @@ void w_world::load_chunk(int32_t x, uint8_t y, int32_t z)
 			return;
 		}
 	}
-	w_chunk *chunk = new w_chunk(x, y, z);
+	wild::chunk *chunk = new wild::chunk(x, y, z);
 	this->loaded_chunks.push_back(chunk);
 }
-void w_world::unload_chunk(int32_t x, uint8_t y, int32_t z)
+void wild::world::unload_chunk(int32_t x, uint8_t y, int32_t z)
 {
 	for (auto it = this->loaded_chunks.begin(); it != this->loaded_chunks.end(); it++)
 	{
@@ -28,14 +28,14 @@ void w_world::unload_chunk(int32_t x, uint8_t y, int32_t z)
 	}
 }
 
-std::optional<block_t> w_world::get_block_at(vec3i pos)
+std::optional<wild::block_t> wild::world::get_block_at(vec3i pos)
 {
 	//get logical chunk coords.
 	int32_t chunk_x = pos.x / 16;
 	uint8_t chunk_y = pos.y / 16;
 	int32_t chunk_z = pos.z / 16;
 
-	auto loaded_chunk = std::find_if(this->loaded_chunks.begin(), this->loaded_chunks.end(), [&](w_chunk *chunk)
+	auto loaded_chunk = std::find_if(this->loaded_chunks.begin(), this->loaded_chunks.end(), [&](chunk *chunk)
 		{
 			return (chunk->x == chunk_x && chunk->y == chunk_y && chunk->z == chunk_z);
 		});
