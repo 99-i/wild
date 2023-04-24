@@ -8,12 +8,12 @@ namespace wild
 	typedef int32_t block_id_t;
 	typedef uint8_t block_data_t;
 	typedef std::tuple<block_id_t, block_data_t> block_t;
-	struct chunk;
+	class chunk;
 	//represents an in-memory loaded world.
-	struct world
+	class world
 	{
 		std::vector<chunk *> loaded_chunks;
-
+	public:
 		void load_chunk(int32_t x, uint8_t y, int32_t z);
 		void unload_chunk(int32_t x, uint8_t y, int32_t z);
 		//returns nullopt if chunk not loaded or pos is out of bounds.
@@ -23,12 +23,6 @@ namespace wild
 	struct chunk
 	{
 		world *world;
-		//the logical x coord of the whole chunk.
-		int32_t x;
-		//the logical y coord of the whole chunk, from 0 to 15.
-		uint8_t y;
-		//the logical z coord of the whole chunk.
-		int32_t z;
 
 		//block ids.
 		//blocks[x][y][z]
@@ -36,6 +30,14 @@ namespace wild
 		//block data bytes.
 		//block_data[x][y][z]
 		block_data_t *block_data;
+
+	public:
+		//the logical x coord of the whole chunk.
+		int32_t x;
+		//the logical y coord of the whole chunk, from 0 to 15.
+		uint8_t y;
+		//the logical z coord of the whole chunk.
+		int32_t z;
 
 		//return the raw chunk data.
 		uint8_t *get_chunk_data()

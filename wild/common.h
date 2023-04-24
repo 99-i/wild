@@ -1,7 +1,7 @@
 #pragma once
 #include <functional>
 #include <tuple>
-
+#include "random.h"
 namespace wild
 {
 	struct vec3i
@@ -22,6 +22,9 @@ namespace wild
 		float x;
 		float y;
 		float z;
+		vec3f() : x(0), y(0), z(0)
+		{
+		}
 		vec3f(float x, float y, float z) : x(x), y(y), z(z)
 		{
 		}

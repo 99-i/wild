@@ -1,7 +1,7 @@
 #include "clientbound_packet.h"
 #include "packet.h"
 
-wild::clientbound_packet::clientbound_packet(int id) : id(id)
+wild::clientbound_packet::clientbound_packet(uint32_t id) : id(id)
 {
 }
 void wild::clientbound_packet::write_bool(bool b)
@@ -66,6 +66,18 @@ void wild::clientbound_packet::write_varint(int32_t varint)
 {
 	std::vector<uint8_t> varint_data = write_fn::write_varint(varint);
 	this->data.insert(this->data.end(), varint_data.begin(), varint_data.end());
+}
+
+std::vector<uint8_t> wild::clientbound_packet::package() const
+{
+	std::vector<uint8_t> id_varint = write_fn::write_varint(this->id);
+	std::vector<uint8_t> length_varint = write_fn::write_varint(id_varint.size() + this->data.size());
+
+	std::vector<uint8_t> all;
+	all.insert(all.begin(), length_varint.begin(), length_varint.end());
+	all.insert(all.end(), id_varint.begin(), id_varint.end());
+	all.insert(all.end(), this->data.begin(), this->data.end());
+	return all;
 }
 
 std::vector<uint8_t> wild::write_fn::write_varint(int32_t varint)

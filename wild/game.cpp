@@ -1,13 +1,16 @@
 #include <chrono>
 #include <plog/Log.h>
+#include "server.h"
 #include "common.h"
+#include "clientbound_packet.h"
 #include "game.h"
+#include "player.h"
 #include "random.h"
 
 constexpr int TICK_RATE_MS = 50;
 using namespace std::literals;
 
-wild::game::game(wild::server *server) : server(server)
+wild::game::game(wild::server &server) : server(server)
 {
 }
 
@@ -29,9 +32,12 @@ void wild::game::handle_event(game_event event)
 	}
 }
 
+//player is already created  and player <-> client are linked by the time this event comes in.
 void wild::game::handle_player_join_event(game_event::player_join_event event)
 {
 	//todo: spawn player in
+
+	auto join_game = clientbound_packet(1);
 }
 void wild::game::handle_player_move_event(game_event::player_move_event event)
 {
@@ -42,13 +48,14 @@ void wild::game::start()
 {
 	while (true)
 	{
-		this->pending_updates_mutex.lock();
-		while (!this->pending_updates.empty())
+		this->pending_events_mutex.lock();
+		while (!this->pending_events.empty())
 		{
-			this->handle_update(this->pending_updates.front());
-			this->pending_updates.pop();
+			this->handle_event(this->pending_events.front());
+			this->pending_events.pop();
 		}
-		this->pending_updates_mutex.unlock();
+		this->pending_events_mutex.unlock();
+
 		auto now = std::chrono::high_resolution_clock::now();
 		if ((now - this->time_since_last_tick) > 50ms)
 		{

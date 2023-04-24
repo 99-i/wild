@@ -12,16 +12,16 @@
 using asio::ip::tcp;
 namespace wild
 {
-	struct server;
-	struct player;
-	struct clientbound_packet;
-	struct packet;
+	class server;
+	class player;
+	class clientbound_packet;
+	class packet;
 
-	struct client
+	class client
 	{
 		static constexpr size_t READ_BUFFER_SIZE = 512;
 		client_state state = client_state::HANDSHAKING;
-		wild::server *server;
+		wild::server &server;
 
 		wild::player *player = nullptr;
 
@@ -34,16 +34,13 @@ namespace wild
 		std::deque<std::vector<uint8_t>> write_queue;
 
 		void handle_write(asio::error_code ec);
-
-		void send_packet(const wild::clientbound_packet *packet);
-		void send_packet(const wild::clientbound_packet *packet, std::function<void(wild::client *)> callback);
 		enum
 		{
 			//in the middle of reading the length varint
 			READ_LENGTH_VARINT,
 			//waiting for all the data to be sent so we can read it.
 			WAITING_FOR_ALL_DATA
-		} read_state = BEGIN;
+		} read_state = READ_LENGTH_VARINT;
 
 #pragma region PacketParserFunctions
 
@@ -61,20 +58,14 @@ namespace wild
 		bool read_packet(std::vector<uint8_t> data);
 
 #pragma endregion
-		void receive_packet(const wild::packet *packet);
 
 		uint8_t read_buf[READ_BUFFER_SIZE];
-		void start_read();
 
-		tcp::socket *socket;
+		tcp::socket socket;
 
 		bool disconnect = false;
 
-		client(tcp::socket *socket, wild::server *server);
-		~client();
-
 		int32_t keepalive_id;
-
 		//kick if > 20s
 		std::chrono::high_resolution_clock::time_point last_time_since_keepalive = std::chrono::high_resolution_clock::now();
 
@@ -82,8 +73,6 @@ namespace wild
 
 		uint32_t keepalive_runnable_id = 0;
 		void start_keepalive();
-
-		void kick(std::string reason);
 
 #pragma region PacketHandleFunctions
 		void Handle_HANDSHAKING_Handshake(const wild::packet *packet);
@@ -116,5 +105,17 @@ namespace wild
 		void Handle_PLAY_ClientStatus(const wild::packet *packet);
 		void Handle_PLAY_PluginMessage(const wild::packet *packet);
 #pragma endregion
+
+	public:
+
+		void start_read();
+		void send_packet(const wild::clientbound_packet *packet);
+		void send_packet(const wild::clientbound_packet *packet, std::function<void(wild::client *)> callback);
+		void receive_packet(const wild::packet *packet);
+
+		client(tcp::socket &&socket, wild::server &server);
+		~client();
+
+		void kick(std::string reason);
 	};
 }

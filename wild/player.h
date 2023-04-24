@@ -1,11 +1,13 @@
 #pragma once
 #include "common.h"
+#include "entity.h"
 
 namespace wild
 {
-	struct player
+	struct client;
+	class player : public entity
 	{
-		std::string username = "username";
-		wild::vec3f pos;
+		std::string username;
+		wild::client *client = nullptr;
 	};
 }
