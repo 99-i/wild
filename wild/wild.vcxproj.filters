@@ -28,6 +28,12 @@
     <Filter Include="Source Files\game">
       <UniqueIdentifier>{5e5a8e6b-d6f8-4fb1-b3f8-d087308c09a4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\game\entity">
+      <UniqueIdentifier>{4f9c75d0-31fd-4ee2-ba0f-13f895241a33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\game\entity">
+      <UniqueIdentifier>{77504ded-0621-4c5b-80e5-28bd587ff6fa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -51,11 +57,14 @@
     <ClCompile Include="game.cpp">
       <Filter>Source Files\game</Filter>
     </ClCompile>
-    <ClCompile Include="player.cpp">
-      <Filter>Source Files\game</Filter>
-    </ClCompile>
     <ClCompile Include="world.cpp">
       <Filter>Source Files\game</Filter>
+    </ClCompile>
+    <ClCompile Include="player.cpp">
+      <Filter>Source Files\game\entity</Filter>
+    </ClCompile>
+    <ClCompile Include="entity.cpp">
+      <Filter>Source Files\game\entity</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -86,14 +95,20 @@
     <ClInclude Include="game.h">
       <Filter>Header Files\game</Filter>
     </ClInclude>
-    <ClInclude Include="player.h">
-      <Filter>Header Files\game</Filter>
-    </ClInclude>
     <ClInclude Include="world.h">
       <Filter>Header Files\game</Filter>
     </ClInclude>
     <ClInclude Include="entity.h">
-      <Filter>Header Files\game</Filter>
+      <Filter>Header Files\game\entity</Filter>
+    </ClInclude>
+    <ClInclude Include="player.h">
+      <Filter>Header Files\game\entity</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="counter.h">
+      <Filter>Header Files\util</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

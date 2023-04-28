@@ -1,7 +1,7 @@
 #pragma once
 #include <functional>
 #include <tuple>
-#include "random.h"
+#include "util.h"
 namespace wild
 {
 	struct vec3i

@@ -6,7 +6,7 @@
 #include "clientbound_packet.h"
 #include "common.h"
 #include "packet.h"
-#include "random.h"
+#include "player.h"
 #include "server.h"
 
 typedef void(wild::client:: *packet_callback)(const wild::packet *packet);
@@ -243,6 +243,18 @@ void wild::client::handle_write(asio::error_code ec)
 	this->write_queue_mutex.unlock();
 }
 
+void wild::client::send_data(const std::vector<uint8_t> &data)
+{
+	this->write_queue.push_back(data);
+	if (this->write_queue.size() <= 1)
+	{
+		this->write_in_progress = true;
+		asio::async_write(this->socket, asio::buffer(this->write_queue.front().data(), this->write_queue.front().size()),
+			std::bind(&wild::client::handle_write, this, std::placeholders::_1));
+		this->write_queue.pop_front();
+	}
+	this->write_queue_mutex.unlock();
+}
 void wild::client::send_packet(const wild::clientbound_packet *packet)
 {
 	this->write_queue_mutex.lock();
@@ -344,8 +356,10 @@ void wild::client::kick(std::string reason)
 
 wild::client::~client()
 {
-	if (this->keepalive_runnable_id != 0)
-		this->server.game.stop_runnable(this->keepalive_runnable_id);
+	if (this->keepalive_runnable_id.has_value())
+	{
+		this->server.game.stop_runnable(this->keepalive_runnable_id.value());
+	}
 	this->socket.shutdown(asio::ip::tcp::socket::shutdown_both);
 	this->socket.cancel();
 	this->socket.close();
@@ -414,6 +428,9 @@ void wild::client::Handle_LOGIN_LoginStart(const wild::packet *packet)
 
 	this->start_keepalive();
 	//todo: spawn player in
+	this->player = new wild::player(*this);
+	wild::game_event join_game_event = wild::game_event::player_join(this->player);
+	this->server.game.queue_event(join_game_event);
 }
 void wild::client::Handle_PLAY_KeepAlive(const wild::packet *packet)
 {

@@ -1,5 +1,6 @@
 #pragma once
 #include <queue>
+#include <chrono>
 #include "common.h"
 
 namespace wild
@@ -29,6 +30,19 @@ namespace wild
 			player_join_event _player_join;
 			player_move_event _player_move;
 		};
+
+		static game_event player_join(wild::player *player)
+		{
+			game_event event;
+			event.type = type::PLAYER_JOIN;
+			event._player_join.player = player;
+			return event;
+		}
+
+	private:
+		game_event()
+		{
+		}
 	};
 
 	struct runnable_entry
@@ -66,6 +80,7 @@ namespace wild
 		wild::server &server;
 		std::chrono::high_resolution_clock::time_point time_since_last_tick;
 
+		wild::counter<uint32_t> runnable_id_counter;
 		std::mutex runnables_mutex;
 		//list of all currently running runnables or runnables that are queued to stop.
 		std::vector<runnable_entry *> runnables;

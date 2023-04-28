@@ -71,7 +71,7 @@ namespace wild
 
 		void do_keepalive();
 
-		uint32_t keepalive_runnable_id = 0;
+		std::optional<uint32_t> keepalive_runnable_id = std::nullopt;
 		void start_keepalive();
 
 #pragma region PacketHandleFunctions
@@ -109,6 +109,7 @@ namespace wild
 	public:
 
 		void start_read();
+		void send_data(const std::vector<uint8_t> &data);
 		void send_packet(const wild::clientbound_packet *packet);
 		void send_packet(const wild::clientbound_packet *packet, std::function<void(wild::client *)> callback);
 		void receive_packet(const wild::packet *packet);

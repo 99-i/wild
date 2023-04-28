@@ -5,7 +5,6 @@
 #include "clientbound_packet.h"
 #include "game.h"
 #include "player.h"
-#include "random.h"
 
 constexpr int TICK_RATE_MS = 50;
 using namespace std::literals;
@@ -107,7 +106,6 @@ void wild::game::tick()
 
 void wild::game::stop_runnable(uint32_t id)
 {
-	this->runnables_mutex.lock();
 	for (auto it = this->runnables.begin(); it != this->runnables.end(); it++)
 	{
 		if ((*it)->runnable_id == id)
@@ -116,7 +114,6 @@ void wild::game::stop_runnable(uint32_t id)
 			break;
 		}
 	}
-	this->runnables_mutex.unlock();
 }
 
 uint32_t wild::game::create_c_runnable(wild::runnable::c_function_t f, wild::runnable::run_settings_t settings)
@@ -131,7 +128,7 @@ uint32_t wild::game::create_c_runnable(wild::runnable::c_function_t f, wild::run
 	entry->ticks_left = entry->delay;
 	entry->c_f = f;
 	entry->function_type = runnable_entry::function_type_e::C_FUNCTION;
-	entry->runnable_id = Random::random_u32();
+	entry->runnable_id = this->runnable_id_counter.next();
 
 	this->runnables_mutex.lock();
 	PLOGD << "Starting runnable " << entry->runnable_id;
