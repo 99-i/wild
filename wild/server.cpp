@@ -81,8 +81,7 @@ void wild::server::client_disconnected(wild::client *client)
 	delete client;
 }
 
-void wild::server::handle_client_packet(wild::client *client, wild::packet *packet)
+void wild::server::handle_client_packet(wild::client *client, wild::packet &packet)
 {
 	client->receive_packet(packet);
-	delete packet;
 }

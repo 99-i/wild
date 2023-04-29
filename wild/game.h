@@ -8,18 +8,22 @@ namespace wild
 	struct player;
 	struct server;
 
+	//an event that the game receives and handles in its main loop.
 	struct game_event
 	{
+		//when a player has joined. the game handles actually spawning in the player
+		//and sending the packets.
 		struct player_join_event
 		{
 			wild::player *player;
 		};
+		//when a player sends a move packet.
+		//todo: yaw and pitch
 		struct player_move_event
 		{
 			wild::player *player;
 			vec3f new_pos;
 		};
-
 		enum class type
 		{
 			PLAYER_JOIN,
@@ -45,22 +49,30 @@ namespace wild
 		}
 	};
 
+	//a runnable that gets ran in a certain amount of ticks or on a timer
 	struct runnable_entry
 	{
+		//the amount of ticks left before this runnable gets called.
 		uint32_t ticks_left;
+		//when first starting the runnable, this determines when the first time the runnable is called is
 		uint32_t delay;
+		//if the runnable is a timer, the interval at which it runs.
 		uint32_t interval;
 		wild::runnable::run_type run_type;
+		//every runnable has a runnable id that is used to stop it.
 		uint32_t runnable_id;
+		//if, on the next time this runnable should run, it should instead be destroyed
 		bool stop = false;
-		//todo
 		enum class function_type_e
 		{
+			//the function is a c or c++ function, not a lua one (which is created in plugins).
 			C_FUNCTION,
 			//todo
 			//LUA_FUNCTION
 		} function_type;
+		//an std::function of the function to run if it is a C_FUNCTION
 		wild::runnable::c_function_t c_f;
+		//call the function.
 		bool call()
 		{
 			if (this->function_type == function_type_e::C_FUNCTION)
@@ -74,20 +86,27 @@ namespace wild
 		}
 	};
 
+	//the main game server. one game per server.
 	class game
 	{
 		std::vector<wild::player *> players;
 		wild::server &server;
+		//the time since tick() was last called
 		std::chrono::high_resolution_clock::time_point time_since_last_tick;
 
+		//a counter that determines which runnable id to assign to the next runnable
 		wild::counter<uint32_t> runnable_id_counter;
+		//a mutex to runnables.
 		std::mutex runnables_mutex;
 		//list of all currently running runnables or runnables that are queued to stop.
 		std::vector<runnable_entry *> runnables;
 
+		//a mutex to pending_events.
 		std::mutex pending_events_mutex;
+		//a queue of all the game events that have yet to be processed by the game.
 		std::queue<game_event> pending_events;
 
+		//internally handle the event.
 		void handle_event(game_event event);
 #pragma region UpdateHandlers
 		void handle_player_join_event(game_event::player_join_event event);
@@ -96,12 +115,17 @@ namespace wild
 
 	public:
 		game(wild::server &server);
+		//queue an event to be handled on the next iteration of the inner game loop
+		//(NOT THE TICK LOOP)
+		//to make something happen on the next tick, call create_c_runnable with a delay of 0.
 		void queue_event(game_event event);
 
 		//returns the id of the runnable (to pass to stop_runnable)
+		//automatically starts the runnable.
 		uint32_t create_c_runnable(wild::runnable::c_function_t f, wild::runnable::run_settings_t settings);
 		//todo
 		//uint32_t create_lua_runnable();
+		//set the stop flag of a runnable to true, essentially destroying it.
 		void stop_runnable(uint32_t id);
 
 		void start();

@@ -21,9 +21,12 @@ namespace wild
 		asio::io_context context;
 		asio::ip::tcp::acceptor acceptor;
 
+		//thread that handles accepting new clients.
 		std::thread accept_thread;
+		//thread that runs the game
 		std::thread game_thread;
 
+		//mutex for game
 		std::mutex game_mutex;
 
 		std::optional<asio::ip::tcp::socket> socket;
@@ -38,14 +41,17 @@ namespace wild
 		server(int port = 25565);
 		wild::game game;
 		//called by client when a packet is read
-		void handle_client_packet(wild::client *client, wild::packet *packet);
+		void handle_client_packet(wild::client *client, wild::packet &packet);
 
 		//called when a client sends malformed data
 		void client_malformed_packet(wild::client *client);
 
+		//called when a client disconnects.
 		void client_disconnected(wild::client *client);
+		//run the server.
 		void run();
 
+		//restart the server.
 		void restart();
 	};
 }

@@ -33,6 +33,7 @@ namespace wild
 			return (other.x == this->x && other.y == this->y && other.z == this->z);
 		}
 	};
+
 	enum class client_state
 	{
 		HANDSHAKING,

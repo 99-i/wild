@@ -42,7 +42,7 @@ void wild::game::handle_player_move_event(game_event::player_move_event event)
 {
 }
 
-//todo: message queue, non-busy wait//don't sleep
+//todo: message queue, non-busy wait
 void wild::game::start()
 {
 	while (true)

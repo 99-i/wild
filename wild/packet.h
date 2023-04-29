@@ -27,34 +27,44 @@ namespace wild
 		//SLOT
 	};
 
+	//different types of packets, their states, and their fields.
 	struct packet_form
 	{
 		std::string_view name;
 		client_state state;
 		int id;
 		int num_fields;
+
 		struct field
 		{
 			std::string_view name;
 			data_type type;
-		} fields[7];
+		} fields[7]; //7 is the highest amount of fields a serverbound packet can have
+		//todo: change fields to std::vector? lots of unused memory
 	};
 
+	//defined in packet_forms.cpp
 	constexpr int FORMS_SIZE = 40;
 	extern packet_form forms[FORMS_SIZE];
 
+	//a serverbound packet
 	struct packet
 	{
 		typedef std::variant<bool, uint8_t, int8_t, uint16_t, int16_t, int32_t, int64_t, float, double, std::string> packet_field_t;
 		std::string_view name;
+		//which form this packet is.
 		const packet_form *form;
 		std::map<std::string, packet_field_t> data;
 	};
+	//which bits to read in a varint byte (0b0111 1111)
 	constexpr uint8_t VARINT_READ_BITS = 0x7F;
+	//which bit to check if to continue to the next byte in a varint (0b1000 0000)
 	constexpr uint8_t VARINT_CONTINUE_BITS = 0x80;
 
 	namespace read_fn
 	{
+		//reads a varint sequentially without having to have all the bytes once.
+		//useful for reading the length varint at the start of every packet.
 		struct varint_reader
 		{
 			int32_t value = 0;
@@ -78,7 +88,7 @@ namespace wild
 			}
 		};
 
-		//if this returns a non-option, the packet data was misformed and the client is kicked.
+		//if these return nullopt, the packet data was misformed and the client is kicked.
 		std::optional<bool> read_bool(std::vector<uint8_t>::iterator &data, const std::vector<uint8_t>::iterator &end);
 		std::optional<int8_t> read_i8(std::vector<uint8_t>::iterator &data, const std::vector<uint8_t>::iterator &end);
 		std::optional<uint8_t> read_u8(std::vector<uint8_t>::iterator &data, const std::vector<uint8_t>::iterator &end);
