@@ -181,6 +181,7 @@
     <ClCompile Include="client.cpp" />
     <ClCompile Include="clientbound_packet.cpp" />
     <ClCompile Include="entity.cpp" />
+    <ClCompile Include="entity_metadata.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="packet.cpp" />
@@ -196,6 +197,7 @@
     <ClInclude Include="console.h" />
     <ClInclude Include="counter.h" />
     <ClInclude Include="entity.h" />
+    <ClInclude Include="entity_metadata.h" />
     <ClInclude Include="game.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="packet.h" />

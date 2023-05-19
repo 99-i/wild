@@ -73,6 +73,10 @@ void wild::server::client_malformed_packet(wild::client *client)
 void wild::server::client_disconnected(wild::client *client)
 {
 	this->clients_mutex.lock();
+	if (client->player)
+	{
+		this->game.queue_event(wild::game_event::player_leave(client->player));
+	}
 	auto index = std::find(this->clients.begin(), this->clients.end(), client);
 	if (index == this->clients.end())
 		return;

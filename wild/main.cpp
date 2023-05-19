@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 		PLOGF << "Failed to initialize WinSock2.2";
 		PLOGF << "Exiting...";
 		WSACleanup();
-		exit(1);
+		return 1;
 	}
 	wild::server *server = new wild::server();
 	c.server = server;

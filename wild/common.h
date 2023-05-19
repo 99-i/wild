@@ -28,10 +28,42 @@ namespace wild
 		vec3f(float x, float y, float z) : x(x), y(y), z(z)
 		{
 		}
+		float distance(const vec3f &other)
+		{
+			return sqrtf(powf(other.x - this->x, 2) + powf(other.y - this->y, 2) + powf(other.z - this->z, 2));
+		}
 		bool operator==(const vec3f &other)
 		{
 			return (other.x == this->x && other.y == this->y && other.z == this->z);
 		}
+	};
+
+	//helper class for converting to fixed point.
+	template <class BaseType, size_t FracDigits>
+	class fixed_point
+	{
+		const static BaseType factor = 1 << FracDigits;
+
+		BaseType data;
+
+	public:
+		fixed_point(double d)
+		{
+			*this = d; // calls operator=
+		}
+
+		fixed_point &operator=(double d)
+		{
+			data = static_cast<BaseType>(d * factor);
+			return *this;
+		}
+
+		BaseType raw_data() const
+		{
+			return data;
+		}
+
+		// Other operators can be defined here
 	};
 
 	enum class client_state

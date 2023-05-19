@@ -25,10 +25,6 @@ namespace wild
 		client_state state = client_state::HANDSHAKING;
 		wild::server &server;
 
-		//the player bound to the client. this is a ptr because player only gets created
-		//when the client actually joins the game
-		wild::player *player = nullptr;
-
 #pragma region TCP
 
 		//buffer that receives raw tcp stream data.
@@ -87,6 +83,7 @@ namespace wild
 #pragma region KeepAlive
 		//the id that the server expects within 20s for the client to send back.
 		int32_t keepalive_id;
+
 		//kick if > 20s
 		std::chrono::high_resolution_clock::time_point last_time_since_keepalive = std::chrono::high_resolution_clock::now();
 
@@ -95,6 +92,10 @@ namespace wild
 
 		//the runnable that calls do_keepalive() every 15 seconds.
 		std::optional<uint32_t> keepalive_runnable_id = std::nullopt;
+
+		//the runnable that calls start_keepalive.
+		std::optional<uint32_t> start_keepalive_runnable_id = std::nullopt;
+
 		//create and start the keepalive runnable.
 		void start_keepalive();
 
@@ -135,7 +136,9 @@ namespace wild
 #pragma endregion
 
 	public:
-
+		//the player bound to the client. this is a ptr because player only gets created
+		//when the client actually joins the game
+		wild::player *player = nullptr;
 		//kick the client if they haven't sent a keepalive packet in 20 seconds.
 		void kick_if_keepalive_expired();
 

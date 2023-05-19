@@ -17,6 +17,11 @@ namespace wild
 		{
 			wild::player *player;
 		};
+		//when a player leaves.
+		struct player_leave_event
+		{
+			wild::player *player;
+		};
 		//when a player sends a move packet.
 		//todo: yaw and pitch
 		struct player_move_event
@@ -27,11 +32,13 @@ namespace wild
 		enum class type
 		{
 			PLAYER_JOIN,
+			PLAYER_LEAVE,
 			PLAYER_MOVE
 		} type;
 		union
 		{
 			player_join_event _player_join;
+			player_leave_event _player_leave;
 			player_move_event _player_move;
 		};
 
@@ -40,6 +47,14 @@ namespace wild
 			game_event event;
 			event.type = type::PLAYER_JOIN;
 			event._player_join.player = player;
+			return event;
+		}
+
+		static game_event player_leave(wild::player *player)
+		{
+			game_event event;
+			event.type = type::PLAYER_LEAVE;
+			event._player_leave.player = player;
 			return event;
 		}
 
@@ -89,6 +104,7 @@ namespace wild
 	//the main game server. one game per server.
 	class game
 	{
+		std::mutex players_mutex;
 		std::vector<wild::player *> players;
 		wild::server &server;
 		//the time since tick() was last called
@@ -110,6 +126,7 @@ namespace wild
 		void handle_event(game_event event);
 #pragma region UpdateHandlers
 		void handle_player_join_event(game_event::player_join_event event);
+		void handle_player_leave_event(game_event::player_leave_event event);
 		void handle_player_move_event(game_event::player_move_event event);
 #pragma endregion
 

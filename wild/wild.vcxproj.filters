@@ -66,6 +66,9 @@
     <ClCompile Include="entity.cpp">
       <Filter>Source Files\game\entity</Filter>
     </ClCompile>
+    <ClCompile Include="entity_metadata.cpp">
+      <Filter>Source Files\game\entity</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="server.h">
@@ -109,6 +112,9 @@
     </ClInclude>
     <ClInclude Include="counter.h">
       <Filter>Header Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="entity_metadata.h">
+      <Filter>Header Files\game\entity</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

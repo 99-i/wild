@@ -5,6 +5,7 @@
 #include "clientbound_packet.h"
 #include "game.h"
 #include "player.h"
+#include "client.h"
 
 constexpr int TICK_RATE_MS = 50;
 using namespace std::literals;
@@ -28,16 +29,44 @@ void wild::game::handle_event(game_event event)
 			return handle_player_join_event(event._player_join);
 		case game_event::type::PLAYER_MOVE:
 			return handle_player_move_event(event._player_move);
+		case game_event::type::PLAYER_LEAVE:
+			return handle_player_leave_event(event._player_leave);
 	}
 }
 
 //player is already created  and player <-> client are linked by the time this event comes in.
 void wild::game::handle_player_join_event(game_event::player_join_event event)
 {
+	this->players_mutex.lock();
 	//todo: spawn player in
 
-	auto join_game = clientbound_packet(1);
+	event.player->send_join_game_packet(1, 0, 0, 100, "default");
+	event.player->send_spawn_position_packet();
+	event.player->send_player_abilities_packet();
+	event.player->send_position_packet();
+
+	for (auto &player : this->players)
+	{
+		player->send_spawn_player_packet(*event.player);
+		event.player->send_spawn_player_packet(*player);
+	}
+
+	this->players.push_back(event.player);
+
+	this->players_mutex.unlock();
 }
+
+void wild::game::handle_player_leave_event(game_event::player_leave_event event)
+{
+	this->players_mutex.lock();
+
+	auto index = std::find(this->players.begin(), this->players.end(), event.player);
+	if (index != this->players.end())
+		this->players.erase(index);
+
+	this->players_mutex.unlock();
+}
+
 void wild::game::handle_player_move_event(game_event::player_move_event event)
 {
 }
@@ -102,10 +131,11 @@ void wild::game::tick()
 	//this->tick_physics();
 	//this->tick_chunks();
 }
-#undef STOP
+#undef STOP_RUNNABLE
 
 void wild::game::stop_runnable(uint32_t id)
 {
+	this->runnables_mutex.lock();
 	for (auto it = this->runnables.begin(); it != this->runnables.end(); it++)
 	{
 		if ((*it)->runnable_id == id)
@@ -114,6 +144,7 @@ void wild::game::stop_runnable(uint32_t id)
 			break;
 		}
 	}
+	this->runnables_mutex.unlock();
 }
 
 uint32_t wild::game::create_c_runnable(wild::runnable::c_function_t f, wild::runnable::run_settings_t settings)

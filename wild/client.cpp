@@ -267,6 +267,7 @@ void wild::client::handle_write(asio::error_code ec)
 
 void wild::client::send_data(const std::vector<uint8_t> &data)
 {
+	this->write_queue_mutex.lock();
 	this->write_queue.push_back(data);
 	if (this->write_queue.size() <= 1)
 	{
@@ -280,7 +281,7 @@ void wild::client::send_data(const std::vector<uint8_t> &data)
 void wild::client::send_packet(const wild::clientbound_packet &packet)
 {
 	this->write_queue_mutex.lock();
-	//tod
+	//todo
 	std::vector<uint8_t> data = packet.package();
 	this->write_queue.push_back(data);
 	if (this->write_queue.size() <= 1)
@@ -304,8 +305,8 @@ void wild::client::send_packet(const wild::clientbound_packet &packet, std::func
 		asio::async_write(this->socket, asio::buffer(this->write_queue.front().data(), this->write_queue.front().size()),
 			[this, callback](asio::error_code ec, int i)
 			{
-				callback(this);
 				this->handle_write(ec);
+				callback(this);
 			});
 		this->write_queue.pop_front();
 	}
@@ -348,8 +349,7 @@ void wild::client::receive_packet(const wild::packet &packet)
 void wild::client::do_keepalive()
 {
 	this->keepalive_id = Random::random_i32();
-	wild::clientbound_packet keepalive(0x00);
-	keepalive.write_i32(this->keepalive_id);
+	auto keepalive = packet_builder(0x00).append_i32(this->keepalive_id).build();
 	this->send_packet(keepalive);
 }
 
@@ -374,11 +374,9 @@ void wild::client::start_keepalive()
 
 void wild::client::kick(std::string reason)
 {
-	wild::clientbound_packet disconnect(0x40);
-
 	nlohmann::json kick_reason = { {"text", reason} };
 
-	disconnect.write_string(kick_reason.dump());
+	auto disconnect = packet_builder(0x40).append_string(kick_reason.dump()).build();
 
 	this->send_packet(disconnect, [](wild::client *client)
 		{
@@ -391,6 +389,10 @@ wild::client::~client()
 	if (this->keepalive_runnable_id.has_value())
 	{
 		this->server.game.stop_runnable(this->keepalive_runnable_id.value());
+	}
+	if (this->start_keepalive_runnable_id.has_value())
+	{
+		this->server.game.stop_runnable(this->start_keepalive_runnable_id.value());
 	}
 	this->socket.shutdown(asio::ip::tcp::socket::shutdown_both);
 	this->socket.cancel();
@@ -419,7 +421,6 @@ void wild::client::Handle_HANDSHAKING_Handshake(const wild::packet &packet)
 
 void wild::client::Handle_STATUS_Request(const wild::packet &packet)
 {
-	wild::clientbound_packet response_packet(0x00);
 	nlohmann::json response =
 	{
 	{"version", {
@@ -436,33 +437,37 @@ void wild::client::Handle_STATUS_Request(const wild::packet &packet)
 	}}
 	};
 
-	response_packet.write_string(response.dump());
+	auto response_packet = packet_builder(0x00).append_string(response.dump()).build();
 	this->send_packet(response_packet);
 }
 void wild::client::Handle_STATUS_Ping(const wild::packet &packet)
 {
 	int64_t time = std::get<int64_t>(packet.data.at("time"));
 
-	wild::clientbound_packet pong(0x01);
-	pong.write_i64(time);
+	auto pong = packet_builder(0x01).append_i64(time).build();
 	this->send_packet(pong);
 }
 void wild::client::Handle_LOGIN_LoginStart(const wild::packet &packet)
 {
 	std::string name = std::get<std::string>(packet.data.at("name"));
-
-	wild::clientbound_packet login_success(0x02);
-	login_success.write_string("9e59c4b1-7a70-4b01-abba-57d87d1e0c2b");
-	login_success.write_string("eric_Yale");
+	//todo: login
+	auto login_success = packet_builder(0x02).append_string("a75760cd-3c12-4b4c-829a-371aacb4c56a").append_string(name).build();
 
 	this->send_packet(login_success);
 	this->state = client_state::PLAY;
 
-	this->start_keepalive();
 	//todo: spawn player in
 	this->player = new wild::player(*this);
+	this->player->_username = name;
 	wild::game_event join_game_event = wild::game_event::player_join(this->player);
 	this->server.game.queue_event(join_game_event);
+
+	this->start_keepalive_runnable_id = this->server.game.create_c_runnable([this](uint32_t id)
+		{
+			this->player->client().start_keepalive();
+			this->start_keepalive_runnable_id = std::nullopt;
+			return true;
+		}, { wild::runnable::run_type::ONCE, 10 * 20, 0 });
 }
 void wild::client::Handle_PLAY_KeepAlive(const wild::packet &packet)
 {
