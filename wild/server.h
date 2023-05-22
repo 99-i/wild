@@ -14,7 +14,6 @@ namespace wild
 
 	class server
 	{
-		static constexpr uint32_t max_players = 100;
 		bool running = false;
 		int port;
 
@@ -38,6 +37,8 @@ namespace wild
 		std::vector<wild::client *> clients;
 
 	public:
+		static constexpr uint32_t max_players = 100;
+
 		server(int port = 25565);
 		wild::game game;
 		//called by client when a packet is read

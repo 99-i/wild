@@ -13,12 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Header Files\lua">
-      <UniqueIdentifier>{40e62ed1-badd-41ed-81a2-01cddc97e663}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\lua">
-      <UniqueIdentifier>{cfcf0953-6f0b-48bd-b6de-c5146efc4cab}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\util">
       <UniqueIdentifier>{85c115d3-69b0-48fb-89f2-c6454c4ab6f9}</UniqueIdentifier>
     </Filter>
@@ -51,13 +45,7 @@
     <ClCompile Include="packet_forms.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="clientbound_packet.cpp">
-      <Filter>Source Files\lua</Filter>
-    </ClCompile>
     <ClCompile Include="game.cpp">
-      <Filter>Source Files\game</Filter>
-    </ClCompile>
-    <ClCompile Include="world.cpp">
       <Filter>Source Files\game</Filter>
     </ClCompile>
     <ClCompile Include="player.cpp">
@@ -68,6 +56,9 @@
     </ClCompile>
     <ClCompile Include="entity_metadata.cpp">
       <Filter>Source Files\game\entity</Filter>
+    </ClCompile>
+    <ClCompile Include="clientbound_packet.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -83,9 +74,6 @@
     <ClInclude Include="main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="clientbound_packet.h">
-      <Filter>Header Files\lua</Filter>
-    </ClInclude>
     <ClInclude Include="console.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -96,9 +84,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="game.h">
-      <Filter>Header Files\game</Filter>
-    </ClInclude>
-    <ClInclude Include="world.h">
       <Filter>Header Files\game</Filter>
     </ClInclude>
     <ClInclude Include="entity.h">
@@ -115,6 +100,15 @@
     </ClInclude>
     <ClInclude Include="entity_metadata.h">
       <Filter>Header Files\game\entity</Filter>
+    </ClInclude>
+    <ClInclude Include="clientbound_packet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="living_entity.h">
+      <Filter>Header Files\game\entity</Filter>
+    </ClInclude>
+    <ClInclude Include="nibble_vector.h">
+      <Filter>Header Files\util</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

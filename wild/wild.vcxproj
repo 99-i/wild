@@ -188,7 +188,6 @@
     <ClCompile Include="packet_forms.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="server.cpp" />
-    <ClCompile Include="world.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="client.h" />
@@ -199,13 +198,14 @@
     <ClInclude Include="entity.h" />
     <ClInclude Include="entity_metadata.h" />
     <ClInclude Include="game.h" />
+    <ClInclude Include="living_entity.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="nibble_vector.h" />
     <ClInclude Include="packet.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="random.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="util.h" />
-    <ClInclude Include="world.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

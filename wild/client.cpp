@@ -237,10 +237,7 @@ void wild::client::start_read()
 			dc = !this->handle_data(data);
 		} catch (asio::system_error ec)
 		{
-			if (ec.code() == asio::error::eof)
-			{
-				dc = true;
-			}
+			dc = true;
 		}
 	}
 	this->server.client_disconnected(this);
@@ -369,7 +366,7 @@ void wild::client::start_keepalive()
 		{
 			this->do_keepalive();
 			return true;
-		}, std::make_tuple(wild::runnable::run_type::TIMER, 0, 10));
+		}, std::make_tuple(wild::runnable::run_type::TIMER, 20 * 10, 20 * 10));
 }
 
 void wild::client::kick(std::string reason)
@@ -387,13 +384,8 @@ void wild::client::kick(std::string reason)
 wild::client::~client()
 {
 	if (this->keepalive_runnable_id.has_value())
-	{
 		this->server.game.stop_runnable(this->keepalive_runnable_id.value());
-	}
-	if (this->start_keepalive_runnable_id.has_value())
-	{
-		this->server.game.stop_runnable(this->start_keepalive_runnable_id.value());
-	}
+
 	this->socket.shutdown(asio::ip::tcp::socket::shutdown_both);
 	this->socket.cancel();
 	this->socket.close();
@@ -428,8 +420,8 @@ void wild::client::Handle_STATUS_Request(const wild::packet &packet)
 		{"protocol", 5}
 	}},
 	{"players", {
-		{"max", 100},
-		{"online", 5},
+		{"max", this->server.max_players},
+		{"online", this->server.game.players.size()},
 		{"sample", {}}
 	}},
 	{"description", {
@@ -462,12 +454,7 @@ void wild::client::Handle_LOGIN_LoginStart(const wild::packet &packet)
 	wild::game_event join_game_event = wild::game_event::player_join(this->player);
 	this->server.game.queue_event(join_game_event);
 
-	this->start_keepalive_runnable_id = this->server.game.create_c_runnable([this](uint32_t id)
-		{
-			this->player->client().start_keepalive();
-			this->start_keepalive_runnable_id = std::nullopt;
-			return true;
-		}, { wild::runnable::run_type::ONCE, 10 * 20, 0 });
+	this->start_keepalive();
 }
 void wild::client::Handle_PLAY_KeepAlive(const wild::packet &packet)
 {
@@ -505,6 +492,9 @@ void wild::client::Handle_PLAY_PlayerPosition(const wild::packet &packet)
 	double z = std::get<double>(packet.data.at("z"));
 	//True if the client is on the ground, False otherwise
 	bool on_ground = std::get<bool>(packet.data.at("on_ground"));
+
+	game_event move_event = wild::game_event::player_move(this->player, { (float)x, (float)feety, (float)z });
+	this->server.game.queue_event(move_event);
 }
 void wild::client::Handle_PLAY_PlayerLook(const wild::packet &packet)
 {
@@ -512,8 +502,12 @@ void wild::client::Handle_PLAY_PlayerLook(const wild::packet &packet)
 	float yaw = std::get<float>(packet.data.at("yaw"));
 	//Absolute rotation on the Y Axis, in degrees
 	float pitch = std::get<float>(packet.data.at("pitch"));
+	PLOGD << "yaw: " << yaw;
 	//True if the client is on the ground, False otherwise
 	bool on_ground = std::get<bool>(packet.data.at("on_ground"));
+
+	game_event look_event = wild::game_event::player_look(this->player, yaw, pitch);
+	this->server.game.queue_event(look_event);
 }
 void wild::client::Handle_PLAY_PlayerPositionAndLook(const wild::packet &packet)
 {
@@ -531,6 +525,14 @@ void wild::client::Handle_PLAY_PlayerPositionAndLook(const wild::packet &packet)
 	float pitch = std::get<float>(packet.data.at("pitch"));
 	//True if the client is on the ground, False otherwise
 	bool on_ground = std::get<bool>(packet.data.at("on_ground"));
+	wild::entity_pos new_pos;
+	new_pos.x = x;
+	new_pos.y = feety;
+	new_pos.z = z;
+	new_pos.yaw = yaw;
+	new_pos.pitch = pitch;
+	game_event move_and_look_event = wild::game_event::player_move_and_look(this->player, new_pos);
+	this->server.game.queue_event(move_and_look_event);
 }
 void wild::client::Handle_PLAY_PlayerDigging(const wild::packet &packet)
 {

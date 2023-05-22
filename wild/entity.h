@@ -5,6 +5,11 @@
 
 namespace wild
 {
+	struct entity_pos : public vec3f
+	{
+		float yaw;
+		float pitch;
+	};
 	//any entity that has an id and position (so all entities). e.g., player, pig, zombie, arrow, etc
 	class entity
 	{
@@ -15,6 +20,6 @@ namespace wild
 	public:
 		int32_t id = id_counter.next();
 		//the entity's position on the server
-		wild::vec3f pos;
+		wild::entity_pos pos;
 	};
 }

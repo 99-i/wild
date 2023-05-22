@@ -1,7 +1,9 @@
 #pragma once
-#include <queue>
 #include <chrono>
+#include <map>
+#include <queue>
 #include "common.h"
+#include "entity.h"
 
 namespace wild
 {
@@ -22,39 +24,83 @@ namespace wild
 		{
 			wild::player *player;
 		};
-		//when a player sends a move packet.
-		//todo: yaw and pitch
+		//when a player sends only a move packet (only x,y,z change)
 		struct player_move_event
 		{
 			wild::player *player;
-			vec3f new_pos;
+			wild::vec3f new_pos;
 		};
-		enum class type
+		//when a player sends only a look packet (only yaw, pitch change)
+		struct player_look_event
+		{
+			wild::player *player;
+			float new_yaw;
+			float new_pitch;
+		};
+		//when a player sends a move and look packet (everything changes.)
+		struct player_move_and_look_event
+		{
+			wild::player *player;
+			wild::entity_pos new_pos;
+		};
+
+		enum class event_type
 		{
 			PLAYER_JOIN,
 			PLAYER_LEAVE,
-			PLAYER_MOVE
+			PLAYER_MOVE,
+			PLAYER_LOOK,
+			PLAYER_MOVE_AND_LOOK
 		} type;
 		union
 		{
 			player_join_event _player_join;
 			player_leave_event _player_leave;
 			player_move_event _player_move;
+			player_look_event _player_look;
+			player_move_and_look_event _player_move_and_look;
 		};
 
-		static game_event player_join(wild::player *player)
+		static inline game_event player_join(wild::player *player)
 		{
 			game_event event;
-			event.type = type::PLAYER_JOIN;
+			event.type = event_type::PLAYER_JOIN;
 			event._player_join.player = player;
 			return event;
 		}
 
-		static game_event player_leave(wild::player *player)
+		static inline game_event player_leave(wild::player *player)
 		{
 			game_event event;
-			event.type = type::PLAYER_LEAVE;
+			event.type = event_type::PLAYER_LEAVE;
 			event._player_leave.player = player;
+			return event;
+		}
+		static inline game_event player_move(wild::player *player, wild::vec3f new_pos)
+		{
+			game_event event;
+			event.type = event_type::PLAYER_MOVE;
+			event._player_move.new_pos = new_pos;
+			event._player_move.player = player;
+			return event;
+		}
+
+		static inline game_event player_look(wild::player *player, float new_yaw, float new_pitch)
+		{
+			game_event event;
+			event.type = event_type::PLAYER_LOOK;
+			event._player_look.new_yaw = new_yaw;
+			event._player_look.new_pitch = new_pitch;
+			event._player_look.player = player;
+			return event;
+		}
+
+		static inline game_event player_move_and_look(wild::player *player, wild::entity_pos new_pos)
+		{
+			game_event event;
+			event.type = event_type::PLAYER_MOVE_AND_LOOK;
+			event._player_move_and_look.player = player;
+			event._player_move_and_look.new_pos = new_pos;
 			return event;
 		}
 
@@ -105,7 +151,6 @@ namespace wild
 	class game
 	{
 		std::mutex players_mutex;
-		std::vector<wild::player *> players;
 		wild::server &server;
 		//the time since tick() was last called
 		std::chrono::high_resolution_clock::time_point time_since_last_tick;
@@ -117,6 +162,8 @@ namespace wild
 		//list of all currently running runnables or runnables that are queued to stop.
 		std::vector<runnable_entry *> runnables;
 
+		void tick_runnables();
+
 		//a mutex to pending_events.
 		std::mutex pending_events_mutex;
 		//a queue of all the game events that have yet to be processed by the game.
@@ -124,13 +171,22 @@ namespace wild
 
 		//internally handle the event.
 		void handle_event(game_event event);
+
+		std::map < wild::player *, game_event::event_type> position_changed_map;
+		void tick_player_positions();
+
 #pragma region UpdateHandlers
 		void handle_player_join_event(game_event::player_join_event event);
 		void handle_player_leave_event(game_event::player_leave_event event);
 		void handle_player_move_event(game_event::player_move_event event);
+		void handle_player_look_event(game_event::player_look_event event);
+		void handle_player_move_and_look_event(game_event::player_move_and_look_event event);
 #pragma endregion
 
 	public:
+
+		std::vector<wild::player *> players;
+
 		game(wild::server &server);
 		//queue an event to be handled on the next iteration of the inner game loop
 		//(NOT THE TICK LOOP)

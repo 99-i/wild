@@ -90,11 +90,8 @@ namespace wild
 		//changes keepalive_id and sends the keepalive packet with the updated keepalive_id
 		void do_keepalive();
 
-		//the runnable that calls do_keepalive() every 15 seconds.
+		//the runnable that calls do_keepalive() every 10 seconds.
 		std::optional<uint32_t> keepalive_runnable_id = std::nullopt;
-
-		//the runnable that calls start_keepalive.
-		std::optional<uint32_t> start_keepalive_runnable_id = std::nullopt;
 
 		//create and start the keepalive runnable.
 		void start_keepalive();
